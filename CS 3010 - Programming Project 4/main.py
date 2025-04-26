@@ -1,3 +1,13 @@
+from sympy import symbols, expand, simplify, nsimplify, Float
+from sympy.parsing.sympy_parser import (
+    parse_expr,
+    standard_transformations,
+    implicit_multiplication,
+    convert_xor,
+    rationalize,
+)
+
+
 # First create a function which reads in the contents of the txt file
 def read_file(path):
     try:
@@ -18,20 +28,21 @@ def read_file(path):
 def printPyramid(pyramid, pyramidName, indent):
     order = 1
     for array in pyramid:
-        print(pyramidName + " for order " + str(order)+" : ",end="")
+        print(pyramidName + " for order " + str(order) + " : ", end="")
         for element in array:
             print(str(element) + "     ", end="")
 
         print()
         order += 1
 
-    if(indent):
+    if (indent):
         print()
+
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     # Use function to read in file contents
-    data = read_file("input2.txt")
+    data = read_file("input.txt")
 
     # for index in range(len(data)):
     #     print(data[index])
@@ -69,7 +80,6 @@ if __name__ == '__main__':
             denominatorPyramid.append(denominators)
             order = order + 1
 
-
     # Now, find numerator pyramid
     # Divided difference pyramid must be calculated in parallel
     # This is because each next order of numerators is dependent on the previous order of divided differences
@@ -105,7 +115,97 @@ if __name__ == '__main__':
 
             order = order + 1
 
+    for arrayIndex in range(len(dividedDifferencePyramid)):
+        for elementIndex in range(len(dividedDifferencePyramid[arrayIndex])):
+            dividedDifferencePyramid[arrayIndex][elementIndex] = round(
+                float(dividedDifferencePyramid[arrayIndex][elementIndex]), 3)
 
-    printPyramid(denominatorPyramid, "Denominators",True)
-    printPyramid(numeratorPyramid, "Numerators",True)
-    printPyramid(dividedDifferencePyramid, "Divided Differences",True)
+    # printPyramid(denominatorPyramid, "Denominators", True)
+    # printPyramid(numeratorPyramid, "Numerators", True)
+    printPyramid(dividedDifferencePyramid, "Divided Differences", True)
+    print()
+
+    # Begin printing out expanded formula using divided difference table
+    # Start by getting coefficients along diagonal of divided difference pyramid
+    diagonalCoefficients = []
+
+    # First index must be the diagonal element at order 0, which wasn't originally added to dividedDifferencesPyramid
+    # Thus, it is added manually
+    diagonalCoefficients.append(yValuesInitial[0])
+
+    # Now we can add the diagonal elements, which are the first element of each array in dividedDifferencePyramid
+    for array in dividedDifferencePyramid:
+        diagonalCoefficients.append(array[0])
+
+    # One last thing, we need the "x - number" values in the equation
+    # These would just be "(x - xInitialValues[number])" as a string
+    xTerms = []
+    for xValue in xValuesInitial:
+        xTerms.append("x-" + str(xValue))
+    # Last element is unused, by nature of divided difference equation expansion
+    del xTerms[len(xTerms) - 1]
+
+    # print(diagonalCoefficients)
+    # print(xTerms)
+
+    polynomial = ""
+
+
+    def wrapInParentheses(value):
+        return "(" + value + ")"
+
+
+    for index in range(len(diagonalCoefficients)):
+        if index == 0:
+            polynomial = polynomial + wrapInParentheses(str(diagonalCoefficients[index]))
+        else:
+            term = ""
+            term = term + wrapInParentheses(str(diagonalCoefficients[index]))
+
+            for integer in range(0, index):
+                term = term + wrapInParentheses(str(xTerms[integer]))
+
+            polynomial = polynomial + "+" + term
+
+    # Polynomial can now be reasonably displayed
+    print("Polynomial using Divided Difference Table:\n" + polynomial)
+
+    # For the final part of the lab, we will be using the Python library Sympy to parse the equation
+    print("\n")
+
+
+    def round_near_numbers(expr, tolerance=1e-6):
+        def _round_if_close(x):
+            # If x is a float and very close to an integer, round it
+            if isinstance(x, Float):
+                rounded = round(float(x))
+                # Check if value should be rounded
+                if abs(x - rounded) < tolerance:
+                    return rounded
+            return x
+
+        # Apply rounding to all other numerical terms in the expression
+        return expr.replace(
+            lambda t: t.is_number,
+            lambda t: _round_if_close(t)
+        )
+
+
+    def simplify_equation(equation_str, tolerance=1e-6):
+        transformations = standard_transformations + (implicit_multiplication,)
+        expr = parse_expr(equation_str, transformations=transformations)
+
+        # Expand and simplify first
+        expanded_expr = expand(expr)
+        simplified_expr = simplify(expanded_expr)
+
+        # Round numbers very close to integers
+        rounded_expr = round_near_numbers(simplified_expr, tolerance)
+
+        return rounded_expr
+
+
+    transformations = standard_transformations + (implicit_multiplication, convert_xor, rationalize)
+    simplifiedPolynomial = simplify_equation(polynomial)
+
+    print("Simplified Polynomial:\n" + str(simplifiedPolynomial))
