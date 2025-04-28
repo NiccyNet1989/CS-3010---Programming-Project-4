@@ -42,6 +42,7 @@ def printPyramid(pyramid, pyramidName, indent):
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     # Use function to read in file contents
+    # Change the string in the line below to read in a different text file
     data = read_file("input.txt")
 
     # for index in range(len(data)):
